@@ -50,3 +50,10 @@ file that was distributed with this source code.
     <input type="button" value="Remove" onclick="var x=$(this).hide().prev().val(1).prev().show().prev().hide()">
 {% endif %}
 {% endblock infinite_form_attachment_widget %}
+
+{% block infinite_form_polycollection_widget %}
+    {% for index,prototype in prototypes %}
+        {%- set attr = attr|merge({('data-prototype' ~ index): form_widget(prototype) }) -%}
+    {% endfor %}
+    {{- block('form_widget') -}}
+{% endblock %}

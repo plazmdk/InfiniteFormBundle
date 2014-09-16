@@ -1,58 +1,67 @@
-$(function () {
-    $(document.body).on('focus', '.entity-search', function() {
-        var that = $(this);
 
-        if (that.data('typeahead')) return;
+$(document).on("focus",".entity-search",function() {
+    var that = $(this);
+    var thatHidden = $(this).prev();
+    if (that.data('typeahead')) return;
+    that.data('typeahead',true);
 
-        var url = that.attr('data-search-url');
-        var timeout = null;
-        var lastQuerySent = null;
+    var id = that.attr("id");
 
-        that.typeahead({
-            source: function(typeahead, query) {
-                that.prev().val('');
+    var url = that.attr('data-search-url');
+    var timeout = null;
+    var lastQuerySent = null;
 
-                if (timeout) clearTimeout(timeout);
+    that.typeahead({},{
+        source: function(query,callback) {
+            that.prev().val('');
+            if (timeout) clearTimeout(timeout);
 
-                // Don't send a query for a blank string
-                if (query == '') {
-                    return [];
-                }
-
-                // Don't re-send a query if already displaying the results for that same query
-                if (query == lastQuerySent && typeahead.shown) {
-                    return null;
-                }
-
-                // Wait briefly before sending the request
-                timeout = setTimeout(function() {
-                    lastQuerySent = query;
-
-                    $.ajax({
-                        url: url,
-                        data: {
-                            substitute_for: that.data('substitute_for'),
-                            query: query
-                        },
-                        success: function (data) {
-                            if (query != lastQuerySent) return; // Ignore AJAX responses to old queries
-
-                            for (var k in data.results) {
-                                data.results[k].list_text = data.results[k].list_text || data.results[k].name;
-                            }
-
-                            typeahead.process(data.results);
-                        }
-                    });
-                }, 150);
-            },
-            property: 'list_text',
-            matcher: function(item) { return true; },
-            onselect: function (selection) {
-                that.prev().val(selection.id);
-                that.val(selection.name);
-                that.trigger('entityselected', selection);
+            // Don't send a query for a blank string
+            if (query == '') {
+                return [];
             }
-        });
+
+            // Don't re-send a query if already displaying the results for that same query
+            if (query == lastQuerySent) {
+                return null;
+            }
+
+            // Wait briefly before sending the request
+            timeout = setTimeout(function() {
+                lastQuerySent = query;
+                $.ajax({
+                    url: url,
+                    data: {
+                        query: query
+                    },
+                    success: function (data) {
+                        if (query != lastQuerySent) return; // Ignore AJAX responses to old queries
+
+                        callback(data);
+                    }
+                });
+            }, 150);
+        },
+        displayKey: 'title'
+    }).on("typeahead:selected", function(obj, datum, name) {
+        thatHidden.val(datum.id);
+        that.val(datum.title);
+        that.trigger("entityselected",datum);
+    }).on("typeahead:autocompleted", function(obj, datum, name) {
+        thatHidden.val(datum.id);
+        that.val(datum.title);
+        that.trigger("entityselected",datum);
+    }).on("keypress", function(evt) {
+        var keypress = false;
+        if (typeof evt.which == "number" && evt.which > 0) {
+            // In other browsers except old versions of WebKit, evt.which is
+            // only greater than zero if the keypress is a printable key.
+            // We need to filter out backspace and ctrl/alt/meta key combinations
+            keypress = !evt.ctrlKey && !evt.metaKey && !evt.altKey && evt.which != 8;
+        }
+        if (keypress) {
+            thatHidden.val("");
+        }
     });
+    $("#"+id).focus();
 });
